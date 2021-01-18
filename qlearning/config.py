@@ -12,4 +12,4 @@ class ConfigParams(object):
         self.input_num_frames = config.getint("MODEL", "input_num_frames")
 
         # Train
-        self.num_episodes = config.get("TRAIN", "num_episodes")
+        self.num_episodes = config.getint("TRAIN", "num_episodes")
