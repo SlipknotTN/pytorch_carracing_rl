@@ -11,10 +11,10 @@ from collections import deque
 
 import cv2
 import gym
+import numpy as np
 import torch
-from torchvision import transforms
 
-from qlearning.common import encoded_actions
+from qlearning.common import encoded_actions, get_continuous_actions, transform_input
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
 
@@ -47,12 +47,13 @@ def main():
     input_states = deque()
 
     # First implementation without experience replay, learning while exploring
+    epsilon = config.initial_epsilon
     for num_episode in range(0, config.num_episodes):
         state = env.reset()
         state_bw = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
         for _ in range(0, config.input_num_frames):
-            # TODO: Add transform composition to convert input to float [-1.0, 1.0] range
-            input_states.append(transforms.ToTensor()(state_bw))
+            # Apply transform composition to convert input to float [-1.0, 1.0] range
+            input_states.append(transform_input()(state_bw))
 
         # Reply the first frame config.input_num_frames times
         done = False
@@ -61,12 +62,19 @@ def main():
             input_tensor = torch.cat(list(input_states), dim=0)
             # Add batch size dimension
             input_tensor = input_tensor.unsqueeze(dim=0)
-            input_tensor.cuda()
+            # Move to GPU
+            input_tensor = input_tensor.type(torch.cuda.FloatTensor)
 
-            # TODO: Choose action from epsilon-greedy policy
+            # Choose action from epsilon-greedy policy
             state_action_values = model(input_tensor)
-
-            # TODO: Convert to continuous space
+            state_action_values_np = state_action_values.cpu().data.numpy()[0]
+            if np.random.rand() < epsilon:
+                next_action = env.action_space.sample()
+            else:
+                next_action_id = np.argmax(state_action_values_np)
+                # Convert to continuous action space
+                next_action_discrete = encoded_actions[next_action_id]
+                next_action = get_continuous_actions(next_action_discrete)
 
             # TODO: Apply action
 
@@ -74,8 +82,9 @@ def main():
             # The target is the reward + gamma * max q(new_state, a, w)
 
             # TODO: Update the deque
-            pass
 
+            # TODO: Epsilon decay
+            pass
 
 
 if __name__ == "__main__":

@@ -13,3 +13,4 @@ class ConfigParams(object):
 
         # Train
         self.num_episodes = config.getint("TRAIN", "num_episodes")
+        self.initial_epsilon = config.getfloat("TRAIN", "initial_epsilon")
