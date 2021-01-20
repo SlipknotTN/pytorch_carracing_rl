@@ -1,10 +1,9 @@
 """
 TODO:
-- Discretize action space (source file claims on/off is possible).
-  - Steer: left, no, right.
-  - Gas: no, yes.
-  - Brake: no, yes.
-- Implement model, 96x96x4 input should be ok (4 BW frames)
+- Assert everything is running as expected
+- Implement test/run script from trained model
+- Implement experience replay and mini-batch
+- Implement fixed Q-Target
 """
 import argparse
 from collections import deque
@@ -13,8 +12,10 @@ import cv2
 import gym
 import numpy as np
 import torch
+import torch.optim as optim
+from torch import nn
 
-from qlearning.common import encoded_actions, get_continuous_actions, transform_input
+from qlearning.common import encoded_actions, get_continuous_actions, transform_input, get_input_tensor
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
 
@@ -44,12 +45,20 @@ def main():
     model.cuda()
     model.train()
 
-    input_states = deque()
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=config.alpha)
 
     # First implementation without experience replay, learning while exploring
-    epsilon = config.initial_epsilon
     for num_episode in range(0, config.num_episodes):
+
+        total_reward = 0.0
+        print(f"Start episode {num_episode + 1}")
+        epsilon = config.min_epsilon + (config.initial_epsilon - config.min_epsilon) * np.exp(-config.eps_decay_rate * num_episode)
+        print(f"epsilon: {epsilon}")
         state = env.reset()
+
+        # Deque to store num_frames as input, reset at every episode
+        input_states = deque()
         state_bw = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
         for _ in range(0, config.input_num_frames):
             # Apply transform composition to convert input to float [-1.0, 1.0] range
@@ -58,33 +67,57 @@ def main():
         # Reply the first frame config.input_num_frames times
         done = False
         while not done:
-            # Prepare input
-            input_tensor = torch.cat(list(input_states), dim=0)
-            # Add batch size dimension
-            input_tensor = input_tensor.unsqueeze(dim=0)
-            # Move to GPU
-            input_tensor = input_tensor.type(torch.cuda.FloatTensor)
+            input_tensor_explore = get_input_tensor(input_states)
 
             # Choose action from epsilon-greedy policy
-            state_action_values = model(input_tensor)
+            state_action_values = model(input_tensor_explore)
             state_action_values_np = state_action_values.cpu().data.numpy()[0]
             if np.random.rand() < epsilon:
-                next_action = env.action_space.sample()
+                action_id = np.random.randint(0, len(encoded_actions))
             else:
-                next_action_id = np.argmax(state_action_values_np)
-                # Convert to continuous action space
-                next_action_discrete = encoded_actions[next_action_id]
-                next_action = get_continuous_actions(next_action_discrete)
+                action_id = np.argmax(state_action_values_np)
+            # Convert to continuous action space
+            action_discrete = encoded_actions[action_id]
+            action = get_continuous_actions(action_discrete)
 
-            # TODO: Apply action
+            # Apply action
+            next_state, reward, done, _ = env.step(action)
+            env.render()
 
-            # TODO: Update model weights according to new state and taken action
-            # The target is the reward + gamma * max q(new_state, a, w)
+            # Update the deque
+            next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
+            input_states.append(transform_input()(next_state_bw))
+            input_states.popleft()
 
-            # TODO: Update the deque
+            # Use the same reached state to train
+            input_tensor_train = get_input_tensor(input_states)
+            next_state_action_values = model(input_tensor_train)
+            new_state_action_values_np = next_state_action_values.cpu().data.numpy()[0]
 
-            # TODO: Epsilon decay
-            pass
+            # Update model weights according to new state and taken action (batch_size is 1)
+            # The target is the reward + gamma x max q(new_state, any_action, w)
+            target = reward + config.gamma * torch.max(next_state_action_values[0])
+            # td_error = target - q(state, action, w)
+            # Weights update = alfa x td_error x gradient_w.r.t._w(q(state, action, w))
+            # With PyTorch we use learning_rate and MSE error
+            # calculate the loss between predicted and target class
+            loss = criterion(target, state_action_values[0][action_id])
+            # Reset the parameters (weight) gradients
+            optimizer.zero_grad()
+            # backward pass to calculate the weight gradients
+            loss.backward()
+            # update the weights
+            optimizer.step()
+
+            # Update the episode reward
+            total_reward += reward
+
+        # End of episode, epsilon decay
+        print(f"End of episode {num_episode + 1}, total_reward: {total_reward}\n")
+
+        if (num_episode + 1) % 10 == 0:
+            print("Saving model")
+            torch.save(model.state_dict(), f"model_baseline_{num_episode + 1}.pth")
 
 
 if __name__ == "__main__":

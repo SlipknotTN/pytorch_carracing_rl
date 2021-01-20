@@ -1,6 +1,7 @@
-from typing import Union, List
+from typing import Union, Deque, List
 
 import numpy as np
+import torch
 from torchvision import transforms
 
 """Discrete to continuous actions conversion"""
@@ -50,3 +51,13 @@ def transform_input():
         transforms.ToTensor(),  # FloatTensor [0.0, 1.0]
         transforms.Normalize(mean=0.5, std=0.5)
     ])
+
+
+def get_input_tensor(input_states: Deque) -> torch.cuda.FloatTensor:
+    # Prepare input
+    input_tensor = torch.cat(list(input_states), dim=0)
+    # Add batch size dimension
+    input_tensor = input_tensor.unsqueeze(dim=0)
+    # Move to GPU
+    input_tensor = input_tensor.type(torch.cuda.FloatTensor)
+    return input_tensor
