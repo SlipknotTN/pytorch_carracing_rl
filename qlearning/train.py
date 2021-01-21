@@ -2,7 +2,8 @@
 TODO:
 - Assert everything is running as expected
 - Implement test/run script from trained model
-- Implement experience replay and mini-batch
+- Implement experience recording from human interaction
+- Implement experience replay (DONE with random sampling) and mini-batch
 - Implement fixed Q-Target
 """
 import argparse
@@ -15,6 +16,7 @@ import torch
 import torch.optim as optim
 from torch import nn
 
+from qlearning.ExperienceBuffer import ExperienceBuffer
 from qlearning.common import encoded_actions, get_continuous_actions, transform_input, get_input_tensor
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
@@ -48,6 +50,9 @@ def main():
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=config.alpha)
 
+    # Experience buffer
+    experience_buffer = ExperienceBuffer(max_size=config.experience_buffer_size)
+
     # First implementation without experience replay, learning while exploring
     for num_episode in range(0, config.num_episodes):
 
@@ -55,6 +60,7 @@ def main():
         print(f"Start episode {num_episode + 1}")
         epsilon = config.min_epsilon + (config.initial_epsilon - config.min_epsilon) * np.exp(-config.eps_decay_rate * num_episode)
         print(f"epsilon: {epsilon}")
+        print(f"Experience buffer length: {experience_buffer.size()}")
         state = env.reset()
 
         # Deque to store num_frames as input, reset at every episode
@@ -67,6 +73,9 @@ def main():
         # Reply the first frame config.input_num_frames times
         done = False
         while not done:
+
+            # EXPLORATION STEP
+
             input_tensor_explore = get_input_tensor(input_states)
 
             # Choose action from epsilon-greedy policy
@@ -86,22 +95,34 @@ def main():
 
             # Update the deque
             next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
+            cv2.imshow("State", next_state_bw)
+            cv2.waitKey(1)
             input_states.append(transform_input()(next_state_bw))
+            # Store the experience (s, a, r, s1). State size is #config.num_input_frames frames.
+            experience_buffer.add([list(input_states)[:-1], action_id, reward, list(input_states)[1:]])
+            # Remove the oldest frame
             input_states.popleft()
 
-            # Use the same reached state to train
-            input_tensor_train = get_input_tensor(input_states)
-            next_state_action_values = model(input_tensor_train)
-            new_state_action_values_np = next_state_action_values.cpu().data.numpy()[0]
+            # TRAINING STEP
+
+            # Sample experience
+            # FIXME: Test/support batch_size > 1
+            state_train, action_train, reward_train, next_state_train \
+                = experience_buffer.sample(batch_size=config.batch_size)[0]
+            input_tensor_train_1 = get_input_tensor(state_train)
+            state_action_train_values = model(input_tensor_train_1)
+
+            input_tensor_train_2 = get_input_tensor(next_state_train)
+            next_state_action_train_values = model(input_tensor_train_2)
 
             # Update model weights according to new state and taken action (batch_size is 1)
             # The target is the reward + gamma x max q(new_state, any_action, w)
-            target = reward + config.gamma * torch.max(next_state_action_values[0])
+            target = reward_train + config.gamma * torch.max(next_state_action_train_values)
             # td_error = target - q(state, action, w)
             # Weights update = alfa x td_error x gradient_w.r.t._w(q(state, action, w))
             # With PyTorch we use learning_rate and MSE error
             # calculate the loss between predicted and target class
-            loss = criterion(target, state_action_values[0][action_id])
+            loss = criterion(target, state_action_train_values[0][action_train])
             # Reset the parameters (weight) gradients
             optimizer.zero_grad()
             # backward pass to calculate the weight gradients

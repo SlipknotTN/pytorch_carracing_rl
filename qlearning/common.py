@@ -53,7 +53,7 @@ def transform_input():
     ])
 
 
-def get_input_tensor(input_states: Deque) -> torch.cuda.FloatTensor:
+def get_input_tensor(input_states: Union[Deque, List]) -> torch.cuda.FloatTensor:
     # Prepare input
     input_tensor = torch.cat(list(input_states), dim=0)
     # Add batch size dimension

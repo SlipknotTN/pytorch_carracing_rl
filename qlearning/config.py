@@ -9,9 +9,11 @@ class ConfigParams(object):
         config.read_file(open(file))
 
         # Model
+        self.batch_size = config.getint("MODEL", "batch_size")
         self.input_num_frames = config.getint("MODEL", "input_num_frames")
 
         # Train
+        self.experience_buffer_size = config.getint("TRAIN", "experience_buffer_size")
         self.num_episodes = config.getint("TRAIN", "num_episodes")
         self.initial_epsilon = config.getfloat("TRAIN", "initial_epsilon")
         self.min_epsilon = config.getfloat("TRAIN", "min_epsilon")
