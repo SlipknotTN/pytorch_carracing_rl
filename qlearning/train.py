@@ -26,6 +26,7 @@ def do_parsing():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Q-Learning PyTorch training script")
     parser.add_argument("--config_file", required=True, type=str, help="Path to the config file")
+    parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
     args = parser.parse_args()
     return args
 
@@ -57,7 +58,7 @@ def main():
     for num_episode in range(0, config.num_episodes):
 
         total_reward = 0.0
-        print(f"Start episode {num_episode + 1}")
+        print(f"\nStart episode {num_episode + 1}")
         epsilon = config.min_epsilon + (config.initial_epsilon - config.min_epsilon) * np.exp(-config.eps_decay_rate * num_episode)
         print(f"epsilon: {epsilon}")
         print(f"Experience buffer length: {experience_buffer.size()}")
@@ -91,12 +92,14 @@ def main():
 
             # Apply action
             next_state, reward, done, _ = env.step(action)
-            env.render()
+            if args.env_render:
+                env.render()
 
             # Update the deque
             next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
-            cv2.imshow("State", next_state_bw)
-            cv2.waitKey(1)
+            if args.env_render:
+                cv2.imshow("State", next_state_bw)
+                cv2.waitKey(1)
             input_states.append(transform_input()(next_state_bw))
             # Store the experience (s, a, r, s1). State size is #config.num_input_frames frames.
             experience_buffer.add([list(input_states)[:-1], action_id, reward, list(input_states)[1:]])
@@ -104,6 +107,8 @@ def main():
             input_states.popleft()
 
             # TRAINING STEP
+
+            # FIXME: Manage ended episode
 
             # Sample experience
             # FIXME: Test/support batch_size > 1
@@ -134,11 +139,13 @@ def main():
             total_reward += reward
 
         # End of episode, epsilon decay
-        print(f"End of episode {num_episode + 1}, total_reward: {total_reward}\n")
+        print(f"End of episode {num_episode + 1}, total_reward: {total_reward}")
 
         if (num_episode + 1) % 10 == 0:
             print("Saving model")
             torch.save(model.state_dict(), f"model_baseline_{num_episode + 1}.pth")
+
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
