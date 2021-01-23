@@ -7,6 +7,7 @@ TODO:
 - Implement fixed Q-Target
 """
 import argparse
+import pickle
 
 import cv2
 import gym
@@ -72,6 +73,7 @@ def do_parsing():
     parser.add_argument("--config_file", required=True, type=str, help="Path to the config file")
     parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
     parser.add_argument("--debug_state", action="store_true", help="Show last state frame in GUI")
+    parser.add_argument("--save_experience", action="store_true", help="Save experience memory for future analysis")
     args = parser.parse_args()
     return args
 
@@ -202,6 +204,12 @@ def main():
 
         # End of episode, epsilon decay
         print(f"End of episode {num_episode + 1}, total_reward: {total_reward}")
+
+        if args.save_experience:
+            experience_dump_file = f"experience_{experience_buffer.size()}.pkl"
+            with open(experience_dump_file, "wb") as out_fp:
+                pickle.dump(experience_buffer, out_fp)
+            print(f"ExperienceBuffer dump saved to \"{experience_dump_file}\"")
 
         if (num_episode + 1) % config.validation_frequency == 0:
             print(f"\nRun validation episode after {num_episode + 1} episodes")

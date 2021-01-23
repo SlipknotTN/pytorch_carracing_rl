@@ -2,7 +2,6 @@ import cv2
 import gym
 
 env = gym.make("CarRacing-v0")
-
 """
 More details here: https://github.com/openai/gym/blob/master/gym/envs/box2d/car_racing.py
 """

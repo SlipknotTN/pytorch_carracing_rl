@@ -20,3 +20,6 @@ class ExperienceBuffer(object):
                                           size=size,
                                           replace=False)
         return [self.buffer[i] for i in sample_indexes]
+
+    def __getitem__(self, item):
+        return self.buffer[item]

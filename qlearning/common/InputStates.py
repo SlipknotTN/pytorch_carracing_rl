@@ -13,13 +13,8 @@ class InputStates(object):
     Class containing the input states considering the concatenation of multiple frames
     """
     def __init__(self, num_frames: int):
-        self.processed_frames = deque()
-        self.bw_frames = deque()
-        self.max_length = num_frames
-
-    def prepare_starting_input_states(self, state: np.ndarray):
-        for _ in range(0, self.max_length):
-            self.add_state(state)
+        self.processed_frames = deque(maxlen=num_frames)
+        self.bw_frames = deque(maxlen=num_frames)
 
     def add_state(self, state: np.ndarray):
         """
@@ -28,10 +23,6 @@ class InputStates(object):
         state_bw = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
         self.bw_frames.append(state_bw)
         self.processed_frames.append(transform_input()(state_bw))
-        # Remove the oldest frame
-        if len(self.processed_frames) > self.max_length:
-            self.processed_frames.popleft()
-            self.bw_frames.popleft()
 
     def get_last_bw_frame(self) -> Optional[np.ndarray]:
         if len(self.bw_frames) > 0:
