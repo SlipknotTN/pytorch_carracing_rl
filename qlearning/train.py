@@ -1,7 +1,7 @@
 """
 TODO:
-- Assert everything is running as expected
-- Implement test/run script from trained model
+- Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
+- Assert everything is running as expected (~)
 - Implement experience recording from human interaction
 - Implement experience replay (DONE with random sampling) and mini-batch
 - Implement fixed Q-Target
@@ -27,6 +27,7 @@ def do_parsing():
                                      description="Q-Learning PyTorch training script")
     parser.add_argument("--config_file", required=True, type=str, help="Path to the config file")
     parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
+    parser.add_argument("--debug_state", action="store_true", help="Show last state frame in GUI")
     args = parser.parse_args()
     return args
 
@@ -86,6 +87,7 @@ def main():
                 action_id = np.random.randint(0, len(encoded_actions))
             else:
                 action_id = np.argmax(state_action_values_np)
+            # print(state_action_values_np)
             # Convert to continuous action space
             action_discrete = encoded_actions[action_id]
             action = get_continuous_actions(action_discrete)
@@ -97,7 +99,7 @@ def main():
 
             # Update the deque
             next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
-            if args.env_render:
+            if args.debug_state:
                 cv2.imshow("State", next_state_bw)
                 cv2.waitKey(1)
             input_states.append(transform_input()(next_state_bw))
@@ -111,6 +113,10 @@ def main():
             # FIXME: Manage ended episode
 
             # Sample experience
+            # TODO: Sample the best tuples by ranking by reward? Especially at the beginning? Lots
+            # of tuples seems very similar and useless (car out of the road)).
+            # Or better by lower reward? We want to learn to turn, probably we should "cluster" the states
+            # and avoid duplicates/similarity
             # FIXME: Test/support batch_size > 1
             state_train, action_train, reward_train, next_state_train \
                 = experience_buffer.sample(batch_size=config.batch_size)[0]
@@ -128,7 +134,7 @@ def main():
             # With PyTorch we use learning_rate and MSE error
             # calculate the loss between predicted and target class
             loss = criterion(target, state_action_train_values[0][action_train])
-            # Reset the parameters (weight) gradients
+            # Reset the parameters (weights) gradients
             optimizer.zero_grad()
             # backward pass to calculate the weight gradients
             loss.backward()
@@ -141,7 +147,9 @@ def main():
         # End of episode, epsilon decay
         print(f"End of episode {num_episode + 1}, total_reward: {total_reward}")
 
-        if (num_episode + 1) % 10 == 0:
+        # TODO: Add a validation step -> use the action with most confidence
+        # TODO: Add save frequency to config
+        if (num_episode + 1) % 50 == 0:
             print("Saving model")
             torch.save(model.state_dict(), f"model_baseline_{num_episode + 1}.pth")
 
