@@ -19,6 +19,7 @@ def do_parsing():
     parser.add_argument("--model_path", required=True, type=str, help="Path to the model path")
     parser.add_argument("--test_episodes", required=True, type=int, help="Number of episodes to run")
     parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
+    parser.add_argument("--debug_state", action="store_true", help="Show last state frame in GUI")
     args = parser.parse_args()
     return args
 
@@ -63,6 +64,8 @@ def main():
             # Choose the action with higher confidence
             state_action_values = model(input_tensor_explore)
             state_action_values_np = state_action_values.cpu().data.numpy()[0]
+            # If state_action_values doesn't change over input states, it is because
+            # input state is the same, every time it is taken the same action with no effect -> stuck
             action_id = np.argmax(state_action_values_np)
             # Convert to continuous action space
             action_discrete = encoded_actions[action_id]
@@ -75,7 +78,7 @@ def main():
 
             # Update the deque
             next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
-            if args.env_render:
+            if args.debug_state:
                 cv2.imshow("State", next_state_bw)
                 cv2.waitKey(1)
             input_states.append(transform_input()(next_state_bw))
