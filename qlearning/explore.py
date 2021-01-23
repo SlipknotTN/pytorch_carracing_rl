@@ -1,7 +1,8 @@
 import cv2
 import gym
 
-env = gym.make('CarRacing-v0')
+env = gym.make("CarRacing-v0")
+
 """
 More details here: https://github.com/openai/gym/blob/master/gym/envs/box2d/car_racing.py
 """
@@ -26,6 +27,5 @@ while not done:
     cv2.imshow("State", cv2.cvtColor(state, cv2.COLOR_RGB2BGR))
     cv2.waitKey(1)
     score += reward
-
 print('Final score:', score)
 env.close()
