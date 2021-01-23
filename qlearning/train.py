@@ -147,16 +147,16 @@ def main():
             s = input_states.as_list()
             input_states.add_state(next_state)
             s1 = input_states.as_list()
-            # Store the experience (s, a, r, s1). State size is #config.num_input_frames frames.
-            experience_buffer.add([s, action_id, reward, s1])
+            # Store the experience (s, a, r, s1) if episode not finished.
+            # State size is #config.num_input_frames frames.
+            if not done:
+                experience_buffer.add([s, action_id, reward, s1])
             if args.debug_state:
                 last_frame_bw = input_states.get_last_bw_frame()
                 cv2.imshow("State", last_frame_bw)
                 cv2.waitKey(1)
 
             # TRAINING STEP
-
-            # FIXME: Manage ended episode
 
             # Sample experience
             # TODO: Sample the best tuples by ranking by reward? Especially at the beginning? Lots
