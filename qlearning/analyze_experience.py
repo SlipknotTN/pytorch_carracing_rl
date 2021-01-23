@@ -6,7 +6,7 @@ import cv2
 
 def do_parsing():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     description="Experience memory debugger script")
+                                     description="Experience memory analyzer script")
     parser.add_argument("--experience_file", required=True, type=str, help="Experience pkl filepath")
     args = parser.parse_args()
     return args
