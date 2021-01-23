@@ -20,3 +20,7 @@ class ConfigParams(object):
         self.eps_decay_rate = config.getfloat("TRAIN", "eps_decay_rate")
         self.gamma = config.getfloat("TRAIN", "gamma")
         self.alpha = config.getfloat("TRAIN", "alpha")  # aka learning rate
+        # Model checkpoint is saved every #save_model_frequency episodes
+        self.save_model_frequency = config.getint("TRAIN", "save_model_frequency")
+        # Validation run is executed every #validation_frequency episodes
+        self.validation_frequency = config.getint("TRAIN", "validation_frequency")

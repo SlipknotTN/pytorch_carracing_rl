@@ -2,12 +2,11 @@
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
 - Assert everything is running as expected (~)
-- Implement experience recording from human interaction
-- Implement experience replay (DONE with random sampling) and mini-batch
+- Implement experience recorded from human interaction
+- Implement experience replay (DONE with random sampling)
 - Implement fixed Q-Target
 """
 import argparse
-from collections import deque
 
 import cv2
 import gym
@@ -16,10 +15,55 @@ import torch
 import torch.optim as optim
 from torch import nn
 
-from qlearning.ExperienceBuffer import ExperienceBuffer
-from qlearning.common import encoded_actions, get_continuous_actions, transform_input, get_input_tensor
+from qlearning.common.env_interaction import take_most_probable_action
+from qlearning.common.input_processing import get_input_tensor_list
+from qlearning.common.space import encoded_actions, get_continuous_actions
+from qlearning.common.ExperienceBuffer import ExperienceBuffer
+from qlearning.common.InputStates import InputStates
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
+
+
+def run_validation_episode(env, config, model, env_render=True, debug_state=False):
+    """
+    Run a validation episode taking the most probable action at every step
+    """
+    total_reward = 0.0
+    state = env.reset()
+    # Eval mode
+    model.eval()
+
+    # Prepare starting input states
+    input_states = InputStates(config.input_num_frames)
+    input_states.add_state(state)
+
+    # Warmup: Fill the input
+    for _ in range(0, config.input_num_frames - 1):
+        no_action_discrete = encoded_actions[4]
+        no_action = get_continuous_actions(no_action_discrete)
+        next_state, reward, done, _ = env.step(no_action)
+        input_states.add_state(next_state)
+
+    # Reply the first frame config.input_num_frames times
+    done = False
+    while not done:
+        done, next_state, reward = take_most_probable_action(env, input_states, model)
+        if env_render:
+            env.render()
+
+        # Update the input states
+        input_states.add_state(next_state)
+        if debug_state:
+            last_frame_bw = input_states.get_last_bw_frame()
+            cv2.imshow("Validation State", last_frame_bw)
+            cv2.waitKey(1)
+
+        # Update the episode reward
+        total_reward += reward
+
+    print(f"End of validation episode, total_reward: {total_reward}")
+    # Restore train mode
+    model.train()
 
 
 def do_parsing():
@@ -65,28 +109,30 @@ def main():
         print(f"Experience buffer length: {experience_buffer.size()}")
         state = env.reset()
 
-        # Deque to store num_frames as input, reset at every episode
-        input_states = deque()
-        state_bw = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
-        for _ in range(0, config.input_num_frames):
-            # Apply transform composition to convert input to float [-1.0, 1.0] range
-            input_states.append(transform_input()(state_bw))
+        # Prepare starting input states
+        input_states = InputStates(config.input_num_frames)
+        input_states.add_state(state)
+        # Warmup: Fill the input
+        for _ in range(0, config.input_num_frames - 1):
+            no_action_discrete = encoded_actions[4]
+            no_action = get_continuous_actions(no_action_discrete)
+            next_state, reward, done, _ = env.step(no_action)
+            input_states.add_state(next_state)
 
         # Reply the first frame config.input_num_frames times
         done = False
         while not done:
 
             # EXPLORATION STEP
-
-            input_tensor_explore = get_input_tensor(input_states)
+            input_tensor_explore = get_input_tensor_list([input_states.as_list()])
 
             # Choose action from epsilon-greedy policy
-            state_action_values = model(input_tensor_explore)
-            state_action_values_np = state_action_values.cpu().data.numpy()[0]
+            state_action_values_explore = model(input_tensor_explore)
+            state_action_values_explore_np = state_action_values_explore.cpu().data.numpy()[0]
             if np.random.rand() < epsilon:
                 action_id = np.random.randint(0, len(encoded_actions))
             else:
-                action_id = np.argmax(state_action_values_np)
+                action_id = np.argmax(state_action_values_explore_np)
             # print(state_action_values_np)
             # Convert to continuous action space
             action_discrete = encoded_actions[action_id]
@@ -97,16 +143,16 @@ def main():
             if args.env_render:
                 env.render()
 
-            # Update the deque
-            next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
-            if args.debug_state:
-                cv2.imshow("State", next_state_bw)
-                cv2.waitKey(1)
-            input_states.append(transform_input()(next_state_bw))
+            # Update the input states
+            s = input_states.as_list()
+            input_states.add_state(next_state)
+            s1 = input_states.as_list()
             # Store the experience (s, a, r, s1). State size is #config.num_input_frames frames.
-            experience_buffer.add([list(input_states)[:-1], action_id, reward, list(input_states)[1:]])
-            # Remove the oldest frame
-            input_states.popleft()
+            experience_buffer.add([s, action_id, reward, s1])
+            if args.debug_state:
+                last_frame_bw = input_states.get_last_bw_frame()
+                cv2.imshow("State", last_frame_bw)
+                cv2.waitKey(1)
 
             # TRAINING STEP
 
@@ -115,25 +161,35 @@ def main():
             # Sample experience
             # TODO: Sample the best tuples by ranking by reward? Especially at the beginning? Lots
             # of tuples seems very similar and useless (car out of the road)).
-            # Or better by lower reward? We want to learn to turn, probably we should "cluster" the states
-            # and avoid duplicates/similarity
-            # FIXME: Test/support batch_size > 1
-            state_train, action_train, reward_train, next_state_train \
-                = experience_buffer.sample(batch_size=config.batch_size)[0]
-            input_tensor_train_1 = get_input_tensor(state_train)
-            state_action_train_values = model(input_tensor_train_1)
+            # Or better by lower reward? But we can't learn when the car is way out of track.
+            # We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
+            # Use color average to detect the quantity of road in the image?
+            sampled_experience = experience_buffer.sample(batch_size=config.batch_size)
 
-            input_tensor_train_2 = get_input_tensor(next_state_train)
-            next_state_action_train_values = model(input_tensor_train_2)
+            # Reshape from list of (s, a, r, s') to list(s), list(a), list(r), list(r')
+            state_train, action_train, reward_train, next_state_train = [list(elem) for elem in zip(*sampled_experience)]
+
+            input_tensor_train_1 = get_input_tensor_list(state_train)
+            state_action_values_train = model(input_tensor_train_1)
+
+            input_tensor_train_2 = get_input_tensor_list(next_state_train)
+            next_state_action_values_train = model(input_tensor_train_2)
 
             # Update model weights according to new state and taken action (batch_size is 1)
             # The target is the reward + gamma x max q(new_state, any_action, w)
-            target = reward_train + config.gamma * torch.max(next_state_action_train_values)
+            reward_train_t_cuda = torch.Tensor(reward_train).cuda()
+            target = reward_train_t_cuda + config.gamma * torch.max(next_state_action_values_train, dim=1).values
             # td_error = target - q(state, action, w)
             # Weights update = alfa x td_error x gradient_w.r.t._w(q(state, action, w))
             # With PyTorch we use learning_rate and MSE error
             # calculate the loss between predicted and target class
-            loss = criterion(target, state_action_train_values[0][action_train])
+            # Retrieve the state value for every action taken in the batch
+            state_action_values_train_filtered = \
+                torch.cat([state_action_values_train[batch_id][action_id].unsqueeze(0)
+                           for batch_id, action_id in enumerate(action_train)], dim=0)
+
+            # Update the weights
+            loss = criterion(target, state_action_values_train_filtered)
             # Reset the parameters (weights) gradients
             optimizer.zero_grad()
             # backward pass to calculate the weight gradients
@@ -147,12 +203,15 @@ def main():
         # End of episode, epsilon decay
         print(f"End of episode {num_episode + 1}, total_reward: {total_reward}")
 
-        # TODO: Add a validation step -> use the action with most confidence
-        # TODO: Add save frequency to config
-        if (num_episode + 1) % 50 == 0:
+        if (num_episode + 1) % config.validation_frequency == 0:
+            print(f"\nRun validation episode after {num_episode + 1} episodes")
+            run_validation_episode(env, config, model, args.env_render, args.debug_state)
+
+        if (num_episode + 1) % config.save_model_frequency == 0:
             print("Saving model")
             torch.save(model.state_dict(), f"model_baseline_{num_episode + 1}.pth")
 
+    env.close()
     cv2.destroyAllWindows()
 
 

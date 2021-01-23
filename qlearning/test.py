@@ -1,12 +1,12 @@
 import argparse
-from collections import deque
 
 import cv2
 import gym
-import numpy as np
 import torch
 
-from qlearning.common import encoded_actions, get_continuous_actions, transform_input, get_input_tensor
+from qlearning.common.env_interaction import take_most_probable_action
+from qlearning.common.space import encoded_actions, get_continuous_actions
+from qlearning.common.InputStates import InputStates
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
 
@@ -41,6 +41,7 @@ def main():
 
     print(model)
     model.cuda()
+    model.eval()
 
     for num_episode in range(0, args.test_episodes):
 
@@ -48,42 +49,29 @@ def main():
         print(f"Start episode {num_episode + 1}")
         state = env.reset()
 
-        # Deque to store num_frames as input, reset at every episode
-        input_states = deque()
-        state_bw = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
-        for _ in range(0, config.input_num_frames):
-            # Apply transform composition to convert input to float [-1.0, 1.0] range
-            input_states.append(transform_input()(state_bw))
+        # Prepare starting input states
+        input_states = InputStates(config.input_num_frames)
+        input_states.add_state(state)
+        # Warmup: Fill the input
+        for _ in range(0, config.input_num_frames - 1):
+            no_action_discrete = encoded_actions[4]
+            no_action = get_continuous_actions(no_action_discrete)
+            next_state, reward, done, _ = env.step(no_action)
+            input_states.add_state(next_state)
 
         # Reply the first frame config.input_num_frames times
         done = False
         while not done:
-
-            input_tensor_explore = get_input_tensor(input_states)
-
-            # Choose the action with higher confidence
-            state_action_values = model(input_tensor_explore)
-            state_action_values_np = state_action_values.cpu().data.numpy()[0]
-            # If state_action_values doesn't change over input states, it is because
-            # input state is the same, every time it is taken the same action with no effect -> stuck
-            action_id = np.argmax(state_action_values_np)
-            # Convert to continuous action space
-            action_discrete = encoded_actions[action_id]
-            action = get_continuous_actions(action_discrete)
-
-            # Apply action
-            next_state, reward, done, _ = env.step(action)
+            done, next_state, reward = take_most_probable_action(env, input_states, model)
             if args.env_render:
                 env.render()
 
-            # Update the deque
-            next_state_bw = cv2.cvtColor(next_state, cv2.COLOR_BGR2GRAY)
+            # Update the input states
+            input_states.add_state(next_state)
             if args.debug_state:
-                cv2.imshow("State", next_state_bw)
+                last_frame_bw = input_states.get_last_bw_frame()
+                cv2.imshow("State", last_frame_bw)
                 cv2.waitKey(1)
-            input_states.append(transform_input()(next_state_bw))
-            # Remove the oldest frame
-            input_states.popleft()
 
             # Update the episode reward
             total_reward += reward

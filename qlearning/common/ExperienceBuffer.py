@@ -15,7 +15,8 @@ class ExperienceBuffer(object):
         self.buffer.append(experience)
 
     def sample(self, batch_size):
-        sample_indexes = np.random.choice(np.arange(len(self.buffer)),
-                                          size=batch_size,
+        size = min(batch_size, self.size())
+        sample_indexes = np.random.choice(np.arange(self.size()),
+                                          size=size,
                                           replace=False)
         return [self.buffer[i] for i in sample_indexes]

@@ -1,8 +1,6 @@
-from typing import Union, Deque, List
+from typing import Union, List
 
 import numpy as np
-import torch
-from torchvision import transforms
 
 """Discrete to continuous actions conversion"""
 steer_to_continuous = {0: -1.0, 1: 0.0, 2: 1.0}
@@ -41,23 +39,3 @@ def get_continuous_actions(discrete_actions: Union[np.ndarray, List[int]]) -> np
     gas_cont = gas_to_continuous[discrete_actions[1]]
     brake_cont = brake_to_continuos[discrete_actions[2]]
     return np.asarray([steer_cont, gas_cont, brake_cont])
-
-
-def transform_input():
-    # Input from [0, 255] to [-1.0, 1.0]
-    # We don't do Grayscale transformation here, because it doesn't accept numpy array as input,
-    # but only PIL Images
-    return transforms.Compose([
-        transforms.ToTensor(),  # FloatTensor [0.0, 1.0]
-        transforms.Normalize(mean=0.5, std=0.5)
-    ])
-
-
-def get_input_tensor(input_states: Union[Deque, List]) -> torch.cuda.FloatTensor:
-    # Prepare input
-    input_tensor = torch.cat(list(input_states), dim=0)
-    # Add batch size dimension
-    input_tensor = input_tensor.unsqueeze(dim=0)
-    # Move to GPU
-    input_tensor = input_tensor.type(torch.cuda.FloatTensor)
-    return input_tensor
