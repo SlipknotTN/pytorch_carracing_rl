@@ -169,7 +169,7 @@ def main():
             sampled_experience = experience_buffer.sample(batch_size=config.batch_size)
 
             # Reshape from list of (s, a, r, s') to list(s), list(a), list(r), list(r')
-            state_train, action_train, reward_train, next_state_train = [list(elem) for elem in zip(*sampled_experience)]
+            state_train, action_train, reward_train, next_state_train, _ = [list(elem) for elem in zip(*sampled_experience)]
 
             input_tensor_train_1 = get_input_tensor_list(state_train)
             state_action_values_train = model(input_tensor_train_1)
