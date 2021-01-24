@@ -105,6 +105,7 @@ def main():
     for num_episode in range(0, config.num_episodes):
 
         total_reward = 0.0
+        losses = []
         print(f"\nStart episode {num_episode + 1}")
         epsilon = config.min_epsilon + (config.initial_epsilon - config.min_epsilon) * np.exp(-config.eps_decay_rate * num_episode)
         print(f"epsilon: {epsilon}")
@@ -192,6 +193,7 @@ def main():
 
             # Update the weights
             loss = criterion(target, state_action_values_train_filtered)
+            losses.append(loss.clone().cpu().data.numpy())
             # Reset the parameters (weights) gradients
             optimizer.zero_grad()
             # backward pass to calculate the weight gradients
@@ -203,7 +205,7 @@ def main():
             total_reward += reward
 
         # End of episode, epsilon decay
-        print(f"End of episode {num_episode + 1}, total_reward: {total_reward}")
+        print(f"End of episode {num_episode + 1}, total_reward: {total_reward}, avg_loss: {np.mean(losses)}")
 
         if args.save_experience:
             experience_dump_file = f"experience_{experience_buffer.size()}.pkl"
