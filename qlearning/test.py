@@ -5,7 +5,7 @@ import gym
 import torch
 
 from qlearning.common.env_interaction import take_most_probable_action
-from qlearning.common.space import encoded_actions, get_continuous_actions
+from qlearning.common.space import get_encoded_actions, get_continuous_actions
 from qlearning.common.InputStates import InputStates
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
@@ -32,10 +32,11 @@ def main():
 
     env = gym.make('CarRacing-v0')
 
+    available_actions = get_encoded_actions(config.action_complexity)
     model = ModelBaseline(
         input_size=env.observation_space.shape[0],
         input_frames=config.input_num_frames,
-        output_size=len(encoded_actions)
+        output_size=len(available_actions)
     )
     model.load_state_dict(torch.load(args.model_path))
 
@@ -54,7 +55,7 @@ def main():
         input_states.add_state(state)
         # Warmup: Fill the input
         for _ in range(0, config.input_num_frames - 1):
-            no_action_discrete = encoded_actions[4]
+            no_action_discrete = available_actions[0]
             no_action = get_continuous_actions(no_action_discrete)
             next_state, reward, done, _ = env.step(no_action)
             input_states.add_state(next_state)
@@ -62,7 +63,7 @@ def main():
         # Reply the first frame config.input_num_frames times
         done = False
         while not done:
-            done, next_state, reward = take_most_probable_action(env, input_states, model)
+            done, next_state, reward = take_most_probable_action(env, input_states, model, available_actions)
             if args.env_render:
                 env.render()
 

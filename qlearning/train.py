@@ -1,10 +1,10 @@
 """
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
-- Assert everything is running as expected (~)
 - Implement experience recorded from human interaction
-- Implement experience replay (DONE with random sampling)
 - Implement fixed Q-Target
+- Save model, experience and config in a dedicated directory
+- Test script: load model and config from directory
 """
 import argparse
 import pickle
@@ -18,14 +18,14 @@ from torch import nn
 
 from qlearning.common.env_interaction import take_most_probable_action
 from qlearning.common.input_processing import get_input_tensor_list
-from qlearning.common.space import encoded_actions, get_continuous_actions
+from qlearning.common.space import get_encoded_actions, get_continuous_actions
 from qlearning.common.ExperienceBuffer import ExperienceBuffer
 from qlearning.common.InputStates import InputStates
 from qlearning.config import ConfigParams
 from qlearning.model.ModelBaseline import ModelBaseline
 
 
-def run_validation_episode(env, config, model, env_render=True, debug_state=False):
+def run_validation_episode(env, config, model, available_actions, env_render=True, debug_state=False):
     """
     Run a validation episode taking the most probable action at every step
     """
@@ -40,7 +40,7 @@ def run_validation_episode(env, config, model, env_render=True, debug_state=Fals
 
     # Warmup: Fill the input
     for _ in range(0, config.input_num_frames - 1):
-        no_action_discrete = encoded_actions[4]
+        no_action_discrete = available_actions[0]
         no_action = get_continuous_actions(no_action_discrete)
         next_state, reward, done, _ = env.step(no_action)
         input_states.add_state(next_state)
@@ -86,10 +86,11 @@ def main():
 
     env = gym.make('CarRacing-v0')
 
+    available_actions = get_encoded_actions(config.action_complexity)
     model = ModelBaseline(
         input_size=env.observation_space.shape[0],
         input_frames=config.input_num_frames,
-        output_size=len(encoded_actions)
+        output_size=len(available_actions)
     )
     print(model)
     model.cuda()
@@ -117,7 +118,7 @@ def main():
         input_states.add_state(state)
         # Warmup: Fill the input
         for _ in range(0, config.input_num_frames - 1):
-            no_action_discrete = encoded_actions[4]
+            no_action_discrete = available_actions[0]
             no_action = get_continuous_actions(no_action_discrete)
             next_state, reward, done, _ = env.step(no_action)
             input_states.add_state(next_state)
@@ -133,12 +134,12 @@ def main():
             state_action_values_explore = model(input_tensor_explore)
             state_action_values_explore_np = state_action_values_explore.cpu().data.numpy()[0]
             if np.random.rand() < epsilon:
-                action_id = np.random.randint(0, len(encoded_actions))
+                action_id = np.random.randint(0, len(available_actions))
             else:
                 action_id = np.argmax(state_action_values_explore_np)
             # print(state_action_values_np)
             # Convert to continuous action space
-            action_discrete = encoded_actions[action_id]
+            action_discrete = available_actions[action_id]
             action = get_continuous_actions(action_discrete)
 
             # Apply action
@@ -215,7 +216,8 @@ def main():
 
         if (num_episode + 1) % config.validation_frequency == 0:
             print(f"\nRun validation episode after {num_episode + 1} episodes")
-            run_validation_episode(env, config, model, args.env_render, args.debug_state)
+            run_validation_episode(env, config, model, available_actions,
+                                   env_render=args.env_render, debug_state=args.debug_state)
 
         if (num_episode + 1) % config.save_model_frequency == 0:
             print("Saving model")
