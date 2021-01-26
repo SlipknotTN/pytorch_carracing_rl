@@ -41,12 +41,28 @@ simple_encoded_actions = {
     4: [0, 0, 1]   # brake
 }
 
+"""
+Single dimension action space mapping, simple combinations (only one command max excluding the brake):
+- no actions
+- turn left
+- turn right
+- gas
+"""
+simple_no_brake_encoded_actions = {
+    0: [0, 0, 0],  # no action
+    1: [1, 0, 0],  # turn left
+    2: [0, 0, 1],  # turn right
+    3: [0, 1, 0],  # gas
+}
+
 
 def get_encoded_actions(action_complexity: str):
     if action_complexity == "complex":
         return complex_encoded_actions
     if action_complexity == "simple":
         return simple_encoded_actions
+    if action_complexity == "simple_no_brake":
+        return simple_no_brake_encoded_actions
     raise Exception(f"Unknown action complexity {action_complexity}")
 
 
