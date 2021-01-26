@@ -3,11 +3,12 @@ TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
 - Implement experience recorded from human interaction
 - Implement fixed Q-Target
-- Save model, experience and config in a dedicated directory
-- Test script: load model and config from directory
+- Simple action space without brake
 """
 import argparse
+import os
 import pickle
+import shutil
 
 import cv2
 import gym
@@ -48,7 +49,7 @@ def run_validation_episode(env, config, model, available_actions, env_render=Tru
     # Reply the first frame config.input_num_frames times
     done = False
     while not done:
-        done, next_state, reward = take_most_probable_action(env, input_states, model)
+        done, next_state, reward = take_most_probable_action(env, input_states, model, available_actions)
         if env_render:
             env.render()
 
@@ -70,7 +71,8 @@ def run_validation_episode(env, config, model, available_actions, env_render=Tru
 def do_parsing():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Q-Learning PyTorch training script")
-    parser.add_argument("--config_file", required=True, type=str, help="Path to the config file")
+    parser.add_argument("--config_file", required=True, type=str, help="Output dir for training artifacts")
+    parser.add_argument("--output_dir", required=True, type=str, help="Output directory ")
     parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
     parser.add_argument("--debug_state", action="store_true", help="Show last state frame in GUI")
     parser.add_argument("--save_experience", action="store_true", help="Save experience memory for future analysis")
@@ -85,6 +87,9 @@ def main():
     config = ConfigParams(args.config_file)
 
     env = gym.make('CarRacing-v0')
+
+    os.makedirs(args.output_dir, exist_ok=False)
+    shutil.copy(args.config_file, os.path.join(args.output_dir, os.path.basename(args.config_file)))
 
     available_actions = get_encoded_actions(config.action_complexity)
     model = ModelBaseline(
@@ -163,11 +168,8 @@ def main():
             # TRAINING STEP
 
             # Sample experience
-            # TODO: Sample the best tuples by ranking by reward? Especially at the beginning? Lots
-            # of tuples seems very similar and useless (car out of the road)).
-            # Or better by lower reward? But we can't learn when the car is way out of track.
             # We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
-            # Use color average to detect the quantity of road in the image?
+            # TODO: Train with mirrored images, but we have to mirror left/right action
             sampled_experience = experience_buffer.sample(batch_size=config.batch_size)
 
             # Reshape from list of (s, a, r, s') to list(s), list(a), list(r), list(r')
@@ -210,7 +212,7 @@ def main():
 
         if args.save_experience:
             experience_dump_file = f"experience_{experience_buffer.size()}.pkl"
-            with open(experience_dump_file, "wb") as out_fp:
+            with open(os.path.join(args.output_dir, experience_dump_file), "wb") as out_fp:
                 pickle.dump(experience_buffer, out_fp)
             print(f"ExperienceBuffer dump saved to \"{experience_dump_file}\"")
 
@@ -221,7 +223,7 @@ def main():
 
         if (num_episode + 1) % config.save_model_frequency == 0:
             print("Saving model")
-            torch.save(model.state_dict(), f"model_baseline_{num_episode + 1}.pth")
+            torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_baseline_{num_episode + 1}.pth"))
 
     env.close()
     cv2.destroyAllWindows()
