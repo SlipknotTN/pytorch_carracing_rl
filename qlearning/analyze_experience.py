@@ -1,3 +1,7 @@
+"""
+Visualize recorded experience.
+Format: (s, a, r, s', exp_weight) tuples
+"""
 import argparse
 import pickle
 
