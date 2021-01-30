@@ -1,9 +1,9 @@
 """
+Train script of the Deep Q-Learning agent
+Generic reference: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
-- Implement experience recorded from human interaction
-
-Generic reference: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 """
 import argparse
 import os
@@ -22,7 +22,7 @@ from qlearning.common.input_processing import get_input_tensor_list
 from qlearning.common.space import get_encoded_actions, get_continuous_actions
 from qlearning.common.experience_buffer import ExperienceBuffer
 from qlearning.common.input_states import InputStates
-from qlearning.config import ConfigParams
+from qlearning.common.config import ConfigParams
 from qlearning.model.model_baseline import ModelBaseline
 
 
