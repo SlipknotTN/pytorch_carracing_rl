@@ -51,7 +51,7 @@ Single dimension action space mapping, simple combinations (only one command max
 simple_no_brake_encoded_actions = {
     0: [0, 0, 0],  # no action
     1: [1, 0, 0],  # turn left
-    2: [0, 0, 1],  # turn right
+    2: [2, 0, 0],  # turn right
     3: [0, 1, 0],  # gas
 }
 
