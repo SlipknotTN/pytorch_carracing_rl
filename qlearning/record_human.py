@@ -16,7 +16,7 @@ def do_parsing():
                                      description="Record human interaction with the environment")
     parser.add_argument("--experience_file", required=True, type=str, help="Experience pkl filepath")
     parser.add_argument("--experience_size", required=True, type=int, help="Maximum number of trajectories to save")
-    parser.add_argument("--action_complexity", required=True, type=str, choices=["simple", "full", "simple_no_brake"],
+    parser.add_argument("--action_complexity", required=True, type=str, choices=["full", "simple", "basic"],
                         help="Discrete action space complexity of the discretization")
     parser.add_argument("--input_num_frames", required=True, type=int,
                         help="Number of frames to be considered as input state")

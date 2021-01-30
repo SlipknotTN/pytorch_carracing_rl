@@ -13,7 +13,7 @@ class ConfigParams(object):
         self.input_num_frames = config.getint("MODEL", "input_num_frames")
         self.action_complexity = config.get("MODEL", "action_complexity")
         self.architecture = config.get("MODEL", "architecture")
-        assert self.action_complexity in ["simple", "full", "simple_no_brake"]
+        assert self.action_complexity in ["full", "simple", "basic"]
 
         # Train
         self.experience_buffer_size = config.getint("TRAIN", "experience_buffer_size")

@@ -78,14 +78,14 @@ Single dimension action space mapping, simple combinations (only one command max
 - turn right
 - gas
 """
-simple_no_brake_encoded_actions = {
+basic_encoded_actions = {
     0: (0, 0, 0),  # no action
     1: (1, 0, 0),  # turn left
     2: (2, 0, 0),  # turn right
     3: (0, 1, 0),  # gas
 }
 
-simple_no_brake_decoded_actions = {
+basic_decoded_actions = {
     (0, 0, 0): 0,  # no action
     (1, 0, 0): 1,  # turn left
     (2, 0, 0): 2,  # turn right
@@ -98,8 +98,8 @@ def get_encoded_actions(action_complexity: str):
         return complex_encoded_actions
     if action_complexity == "simple":
         return simple_encoded_actions
-    if action_complexity == "simple_no_brake":
-        return simple_no_brake_encoded_actions
+    if action_complexity == "basic":
+        return basic_encoded_actions
     raise Exception(f"Unknown action complexity {action_complexity}")
 
 
@@ -108,8 +108,8 @@ def get_decoded_actions(action_complexity: str):
         return complex_decoded_actions
     if action_complexity == "simple":
         return simple_decoded_actions
-    if action_complexity == "simple_no_brake":
-        return simple_no_brake_decoded_actions
+    if action_complexity == "basic":
+        return basic_decoded_actions
     raise Exception(f"Unknown action complexity {action_complexity}")
 
 
