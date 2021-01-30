@@ -4,6 +4,10 @@ Generic reference: https://pytorch.org/tutorials/intermediate/reinforcement_q_le
 
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
+- We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
+  Or possible aumentations like train with mirrored images, but we have to mirror left/right action
+- Update experience buffer in a smarter way. Not FIFO only in time. We should build a diverse experience buffer.
+  By replacing the old experience we also wipe out the pre-recorded experience very fast.
 """
 import argparse
 import os
@@ -69,6 +73,8 @@ def do_parsing():
                                      description="Q-Learning PyTorch training script")
     parser.add_argument("--config_file", required=True, type=str, help="Output dir for training artifacts")
     parser.add_argument("--output_dir", required=True, type=str, help="Output directory ")
+    parser.add_argument("--initial_experience_file", required=False, type=str,
+                        help="Prerecorded experience to start with")
     parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
     parser.add_argument("--debug_state", action="store_true", help="Show last state frame in GUI")
     parser.add_argument("--save_experience", action="store_true", help="Save experience memory for future analysis")
@@ -111,7 +117,18 @@ def main():
     optimizer = optim.Adam(train_model.parameters(), lr=config.alpha)
 
     # Experience buffer
-    experience_buffer = ExperienceBuffer(max_size=config.experience_buffer_size)
+    if args.initial_experience_file:
+        print(f"Loading experience buffer from {args.initial_experience_file}, "
+              f"it is up to you to assert that number of input frames and action space are coherent with the train")
+        assert(os.path.exists(args.initial_experience_file)), \
+            f"Experience file {args.initial_experience_file} not exists"
+        with open(args.initial_experience_file, "rb") as in_fp:
+            experience_buffer = pickle.load(in_fp)
+            assert experience_buffer.size <= config.experience_buffer_size, \
+                f"Loaded experience is bigger then config value " \
+                f"{experience_buffer.size} vs {config.experience_buffer_size}"
+    else:
+        experience_buffer = ExperienceBuffer(max_size=config.experience_buffer_size)
 
     # First implementation without experience replay, learning while exploring
     for num_episode in range(0, config.num_episodes):
@@ -174,8 +191,6 @@ def main():
             # TRAINING STEP
 
             # Sample experience
-            # We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
-            # TODO: Train with mirrored images, but we have to mirror left/right action
             sampled_experience = experience_buffer.sample(batch_size=config.batch_size)
 
             # Reshape from list of (s, a, r, s') to list(s), list(a), list(r), list(r')
