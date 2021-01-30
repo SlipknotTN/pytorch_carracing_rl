@@ -10,7 +10,7 @@ class ModelOpenAI(nn.Module):
         super(ModelOpenAI, self).__init__()
 
         # Define convolution and fully connected
-        self.conv1 = nn.Conv2d(in_channels=input_frames, out_channels=32, kernel_size=(8, 8), padding=1, stride=4)
+        self.conv1 = nn.Conv2d(in_channels=input_frames, out_channels=32, kernel_size=(8, 8), padding=2, stride=4)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(4, 4), padding=1, stride=2)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), padding=1, stride=1)
 
