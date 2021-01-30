@@ -2,8 +2,8 @@
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
 - Implement experience recorded from human interaction
-- Implement fixed Q-Target
-- Simple action space without brake
+
+Generic reference: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 """
 import argparse
 import os
@@ -32,8 +32,6 @@ def run_validation_episode(env, config, model, available_actions, env_render=Tru
     """
     total_reward = 0.0
     state = env.reset()
-    # Eval mode
-    model.eval()
 
     # Prepare starting input states
     input_states = InputStates(config.input_num_frames)
@@ -64,8 +62,6 @@ def run_validation_episode(env, config, model, available_actions, env_render=Tru
         total_reward += reward
 
     print(f"End of validation episode, total_reward: {total_reward}")
-    # Restore train mode
-    model.train()
 
 
 def do_parsing():
@@ -89,20 +85,30 @@ def main():
     env = gym.make('CarRacing-v0')
 
     os.makedirs(args.output_dir, exist_ok=False)
-    shutil.copy(args.config_file, os.path.join(args.output_dir, os.path.basename(args.config_file)))
+    shutil.copy(args.config_file, os.path.join(args.output_dir, "config.cfg"))
 
     available_actions = get_encoded_actions(config.action_complexity)
-    model = ModelBaseline(
+    train_model = ModelBaseline(
         input_size=env.observation_space.shape[0],
         input_frames=config.input_num_frames,
         output_size=len(available_actions)
     )
-    print(model)
-    model.cuda()
-    model.train()
+    print(train_model)
+    train_model.cuda()
+    train_model.train()
+
+    # Target model aligned periodically to train model, fixed Q-target technique
+    target_model = ModelBaseline(
+        input_size=env.observation_space.shape[0],
+        input_frames=config.input_num_frames,
+        output_size=len(available_actions)
+    )
+    target_model.load_state_dict(train_model.state_dict())
+    target_model.cuda()
+    target_model.eval()
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=config.alpha)
+    optimizer = optim.Adam(train_model.parameters(), lr=config.alpha)
 
     # Experience buffer
     experience_buffer = ExperienceBuffer(max_size=config.experience_buffer_size)
@@ -136,7 +142,7 @@ def main():
             input_tensor_explore = get_input_tensor_list([input_states.as_list()])
 
             # Choose action from epsilon-greedy policy
-            state_action_values_explore = model(input_tensor_explore)
+            state_action_values_explore = train_model(input_tensor_explore)
             state_action_values_explore_np = state_action_values_explore.cpu().data.numpy()[0]
             if np.random.rand() < epsilon:
                 action_id = np.random.randint(0, len(available_actions))
@@ -176,15 +182,15 @@ def main():
             state_train, action_train, reward_train, next_state_train, _ = [list(elem) for elem in zip(*sampled_experience)]
 
             input_tensor_train_1 = get_input_tensor_list(state_train)
-            state_action_values_train = model(input_tensor_train_1)
+            state_action_values_train = train_model(input_tensor_train_1)
 
-            input_tensor_train_2 = get_input_tensor_list(next_state_train)
-            next_state_action_values_train = model(input_tensor_train_2)
+            input_tensor_target_2 = get_input_tensor_list(next_state_train)
+            next_state_action_values_target = target_model(input_tensor_target_2)
 
             # Update model weights according to new state and taken action (batch_size is 1)
             # The target is the reward + gamma x max q(new_state, any_action, w)
             reward_train_t_cuda = torch.Tensor(reward_train).cuda()
-            target = reward_train_t_cuda + config.gamma * torch.max(next_state_action_values_train, dim=1).values
+            target = reward_train_t_cuda + config.gamma * torch.max(next_state_action_values_target, dim=1).values
             # td_error = target - q(state, action, w)
             # Weights update = alfa x td_error x gradient_w.r.t._w(q(state, action, w))
             # With PyTorch we use learning_rate and MSE error
@@ -207,8 +213,15 @@ def main():
             # Update the episode reward
             total_reward += reward
 
-        # End of episode, epsilon decay
+        # END OF EPISODE
+
+        # Epsilon decay
         print(f"End of episode {num_episode + 1}, total_reward: {total_reward}, avg_loss: {np.mean(losses)}")
+
+        # Update target model every episode
+        if (num_episode + 1) % config.update_target_frequency == 0:
+            print("Updating target model")
+            target_model.load_state_dict(train_model.state_dict())
 
         if args.save_experience:
             experience_dump_file = f"experience_{experience_buffer.size()}.pkl"
@@ -218,12 +231,17 @@ def main():
 
         if (num_episode + 1) % config.validation_frequency == 0:
             print(f"\nRun validation episode after {num_episode + 1} episodes")
-            run_validation_episode(env, config, model, available_actions,
+            train_model.eval()
+            run_validation_episode(env, config, train_model, available_actions,
                                    env_render=args.env_render, debug_state=args.debug_state)
+            train_model.train()
 
         if (num_episode + 1) % config.save_model_frequency == 0:
             print("Saving model")
-            torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_baseline_{num_episode + 1}.pth"))
+            torch.save(
+                target_model.state_dict(),
+                os.path.join(args.output_dir, f"model_baseline_{num_episode + 1}.pth")
+            )
 
     env.close()
     cv2.destroyAllWindows()

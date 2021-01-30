@@ -26,3 +26,5 @@ class ConfigParams(object):
         self.save_model_frequency = config.getint("TRAIN", "save_model_frequency")
         # Validation run is executed every #validation_frequency episodes
         self.validation_frequency = config.getint("TRAIN", "validation_frequency")
+        # Target model is updated every #update_target_frequency episodes
+        self.update_target_frequency = config.getint("TRAIN", "update_target_frequency")
