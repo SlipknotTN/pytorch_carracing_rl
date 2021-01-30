@@ -11,6 +11,7 @@ class ExperienceBuffer(object):
         # Higher weight, higher probability to be chosen
         self.frame_weight = deque(maxlen=max_size)
 
+    @property
     def size(self):
         return len(self.buffer)
 
@@ -22,11 +23,11 @@ class ExperienceBuffer(object):
         self.frame_weight.append(experience_weight)
 
     def sample(self, batch_size):
-        size = min(batch_size, self.size())
+        size = min(batch_size, self.size)
         # TODO: Increase differences with softmax? Using temperature because most of the weights remain similar. WIP.
         temp = 100
         probs = np.exp(np.multiply(self.frame_weight, temp)) / np.sum(np.exp(np.multiply(self.frame_weight, temp)))
-        sample_indexes = np.random.choice(np.arange(self.size()),
+        sample_indexes = np.random.choice(np.arange(self.size),
                                           size=size,
                                           replace=False,
                                           p=probs)

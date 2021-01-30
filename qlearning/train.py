@@ -121,7 +121,7 @@ def main():
         print(f"\nStart episode {num_episode + 1}")
         epsilon = config.min_epsilon + (config.initial_epsilon - config.min_epsilon) * np.exp(-config.eps_decay_rate * num_episode)
         print(f"epsilon: {epsilon}")
-        print(f"Experience buffer length: {experience_buffer.size()}")
+        print(f"Experience buffer length: {experience_buffer.size}")
         state = env.reset()
 
         # Prepare starting input states
@@ -224,7 +224,7 @@ def main():
             target_model.load_state_dict(train_model.state_dict())
 
         if args.save_experience:
-            experience_dump_file = f"experience_{experience_buffer.size()}.pkl"
+            experience_dump_file = f"experience_{experience_buffer.size}.pkl"
             with open(os.path.join(args.output_dir, experience_dump_file), "wb") as out_fp:
                 pickle.dump(experience_buffer, out_fp)
             print(f"ExperienceBuffer dump saved to \"{experience_dump_file}\"")

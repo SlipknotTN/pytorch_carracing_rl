@@ -16,6 +16,10 @@ class InputStates(object):
         self.processed_frames = deque(maxlen=num_frames)
         self.bw_frames = deque(maxlen=num_frames)
 
+    @property
+    def size(self):
+        return len(self.processed_frames)
+
     def add_state(self, state: np.ndarray):
         """
         Add a new state to internal deques considering max length
