@@ -11,7 +11,7 @@ from qlearning.common.env_interaction import take_most_probable_action
 from qlearning.common.space import get_encoded_actions, get_continuous_actions
 from qlearning.common.input_states import InputStates
 from qlearning.common.config import ConfigParams
-from qlearning.model.model_baseline import ModelBaseline
+from qlearning.model.model_factory import ModelFactory
 
 
 def do_parsing():
@@ -36,11 +36,13 @@ def main():
     env = gym.make('CarRacing-v0')
 
     available_actions = get_encoded_actions(config.action_complexity)
-    model = ModelBaseline(
+    model = ModelFactory.create_model(
+        architecture=config.architecture,
         input_size=env.observation_space.shape[0],
         input_frames=config.input_num_frames,
         output_size=len(available_actions)
     )
+
     model.load_state_dict(torch.load(args.model_path))
 
     print(model)

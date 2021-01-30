@@ -2,12 +2,15 @@
 Train script of the Deep Q-Learning agent
 Generic reference: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 
+Other ideas: https://gsurma.medium.com/atari-reinforcement-learning-in-depth-part-1-ddqn-ceaa762a546f
+
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
 - We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
   Or possible aumentations like train with mirrored images, but we have to mirror left/right action
 - Update experience buffer in a smarter way. Not FIFO only in time. We should build a diverse experience buffer.
   By replacing the old experience we also wipe out the pre-recorded experience very fast.
+  Easier maybe to just increase the experience buffer size.
 """
 import argparse
 import os
@@ -27,7 +30,7 @@ from qlearning.common.space import get_encoded_actions, get_continuous_actions
 from qlearning.common.experience_buffer import ExperienceBuffer
 from qlearning.common.input_states import InputStates
 from qlearning.common.config import ConfigParams
-from qlearning.model.model_baseline import ModelBaseline
+from qlearning.model.model_factory import ModelFactory
 
 
 def run_validation_episode(env, config, model, available_actions, env_render=True, debug_state=False):
@@ -94,7 +97,8 @@ def main():
     shutil.copy(args.config_file, os.path.join(args.output_dir, "config.cfg"))
 
     available_actions = get_encoded_actions(config.action_complexity)
-    train_model = ModelBaseline(
+    train_model = ModelFactory.create_model(
+        architecture=config.architecture,
         input_size=env.observation_space.shape[0],
         input_frames=config.input_num_frames,
         output_size=len(available_actions)
@@ -104,7 +108,8 @@ def main():
     train_model.train()
 
     # Target model aligned periodically to train model, fixed Q-target technique
-    target_model = ModelBaseline(
+    target_model = ModelFactory.create_model(
+        architecture=config.architecture,
         input_size=env.observation_space.shape[0],
         input_frames=config.input_num_frames,
         output_size=len(available_actions)
@@ -255,7 +260,7 @@ def main():
             print("Saving model")
             torch.save(
                 target_model.state_dict(),
-                os.path.join(args.output_dir, f"model_baseline_{num_episode + 1}.pth")
+                os.path.join(args.output_dir, f"model_{num_episode + 1}.pth")
             )
 
     env.close()

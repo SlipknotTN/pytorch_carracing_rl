@@ -12,6 +12,7 @@ class ConfigParams(object):
         self.batch_size = config.getint("MODEL", "batch_size")
         self.input_num_frames = config.getint("MODEL", "input_num_frames")
         self.action_complexity = config.get("MODEL", "action_complexity")
+        self.architecture = config.get("MODEL", "architecture")
         assert self.action_complexity in ["simple", "full", "simple_no_brake"]
 
         # Train
