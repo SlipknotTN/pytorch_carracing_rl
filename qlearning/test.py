@@ -49,6 +49,8 @@ def main():
     model.cuda()
     model.eval()
 
+    sum_of_episodes_rewards = 0
+
     for num_episode in range(0, args.test_episodes):
 
         total_reward = 0.0
@@ -83,7 +85,10 @@ def main():
             total_reward += reward
 
         # End of episode, epsilon decay
+        sum_of_episodes_rewards += total_reward
         print(f"End of episode {num_episode + 1}, total_reward: {total_reward}\n")
+
+    print(f"Average total rewards over {args.test_episodes} episodes: {sum_of_episodes_rewards/args.test_episodes}")
 
 
 if __name__ == "__main__":

@@ -7,10 +7,13 @@ Other ideas: https://gsurma.medium.com/atari-reinforcement-learning-in-depth-par
 TODO:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
 - We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
-  Or possible aumentations like train with mirrored images, but we have to mirror left/right action
+  Or possible augmentations like train with mirrored images, but we have to mirror left/right action
 - Update experience buffer in a smarter way. Not FIFO only in time. We should build a diverse experience buffer.
   By replacing the old experience we also wipe out the pre-recorded experience very fast.
   Easier maybe to just increase the experience buffer size.
+- Load and export experience buffer in JSON format. Otherwise maxlen is fixed and we can't continue increase
+  the prerecorded experience.
+- Export training and validation total rewards for every episode, to easily detect the best checkpoint.
 """
 import argparse
 import os
