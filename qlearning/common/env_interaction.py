@@ -5,8 +5,8 @@ import numpy as np
 
 from qlearning.common.input_processing import get_input_tensor_list
 from qlearning.common.space import get_continuous_actions
-from qlearning.common.InputStates import InputStates
-from qlearning.model.ModelBaseline import ModelBaseline
+from qlearning.common.input_states import InputStates
+from qlearning.model.model_baseline import ModelBaseline
 
 
 def take_most_probable_action(

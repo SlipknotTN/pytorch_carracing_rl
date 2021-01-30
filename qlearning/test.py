@@ -6,9 +6,9 @@ import torch
 
 from qlearning.common.env_interaction import take_most_probable_action
 from qlearning.common.space import get_encoded_actions, get_continuous_actions
-from qlearning.common.InputStates import InputStates
+from qlearning.common.input_states import InputStates
 from qlearning.config import ConfigParams
-from qlearning.model.ModelBaseline import ModelBaseline
+from qlearning.model.model_baseline import ModelBaseline
 
 
 def do_parsing():

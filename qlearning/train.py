@@ -20,10 +20,10 @@ from torch import nn
 from qlearning.common.env_interaction import take_most_probable_action
 from qlearning.common.input_processing import get_input_tensor_list
 from qlearning.common.space import get_encoded_actions, get_continuous_actions
-from qlearning.common.ExperienceBuffer import ExperienceBuffer
-from qlearning.common.InputStates import InputStates
+from qlearning.common.experience_buffer import ExperienceBuffer
+from qlearning.common.input_states import InputStates
 from qlearning.config import ConfigParams
-from qlearning.model.ModelBaseline import ModelBaseline
+from qlearning.model.model_baseline import ModelBaseline
 
 
 def run_validation_episode(env, config, model, available_actions, env_render=True, debug_state=False):
