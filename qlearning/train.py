@@ -160,8 +160,8 @@ def main():
             state = env.reset()
 
             # Update TensorBoard
-            writer.add_scalar("Epsilon", epsilon, num_episode)
-            writer.add_scalar("Experience size", experience_buffer.size, num_episode)
+            writer.add_scalar("Train/epsilon", epsilon, num_episode)
+            writer.add_scalar("Train/experience_size", experience_buffer.size, num_episode)
 
             # Prepare starting input states
             input_states = InputStates(config.input_num_frames)
@@ -273,7 +273,7 @@ def main():
                 train_model.eval()
                 val_reward = run_validation_episode(env, config, train_model, available_actions,
                                                     env_render=args.env_render, debug_state=args.debug_state)
-                writer.add_scalar("Val/reward", val_reward, num_episode)
+                writer.add_scalar("Validation/reward", val_reward, num_episode)
                 train_model.train()
 
             # Save model
