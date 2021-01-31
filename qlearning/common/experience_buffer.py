@@ -7,6 +7,7 @@ class ExperienceBuffer(object):
 
     def __init__(self, max_size=1000):
         self.buffer = deque(maxlen=max_size)
+        self.max_size = self.buffer.maxlen
         # Weight of the last frames of first state in the experience, for more accurate sampling.
         # Higher weight, higher probability to be chosen
         self.frame_weight = deque(maxlen=max_size)
@@ -21,6 +22,9 @@ class ExperienceBuffer(object):
         experience.append(experience_weight)
         self.buffer.append(experience)
         self.frame_weight.append(experience_weight)
+
+    def is_full(self) -> bool:
+        return self.size == self.max_size
 
     def sample(self, batch_size):
         size = min(batch_size, self.size)

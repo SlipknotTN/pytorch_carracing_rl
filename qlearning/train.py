@@ -13,7 +13,8 @@ TODO:
   Easier maybe to just increase the experience buffer size.
 - Load and export experience buffer in JSON format. Otherwise maxlen is fixed and we can't continue increase
   the prerecorded experience.
-- Export training and validation total rewards for every episode, to easily detect the best checkpoint.
+- Export training and validation total rewards for every episode, to easily detect the best checkpoint. Tensorboard?!
+- Record human experience also with errors and recovers. Like exits on the grass and go on tarmac again.
 """
 import argparse
 import os
@@ -246,7 +247,7 @@ def main():
             print("Updating target model")
             target_model.load_state_dict(train_model.state_dict())
 
-        if args.save_experience:
+        if args.save_experience and experience_buffer.is_full():
             experience_dump_file = f"experience_{experience_buffer.size}.pkl"
             with open(os.path.join(args.output_dir, experience_dump_file), "wb") as out_fp:
                 pickle.dump(experience_buffer, out_fp)
