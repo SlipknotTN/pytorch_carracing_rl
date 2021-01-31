@@ -16,6 +16,16 @@ class ExperienceBuffer(object):
     def size(self):
         return len(self.buffer)
 
+    def from_experience_buffer(self, experience_buffer):
+        """
+        Assign buffers to the ones already filled in another experience_buffer.
+        It possible to keep use the set self.max_size but starting from pre-filled buffers.
+        """
+        assert len(self.buffer) == 0 and len(self.frame_weight) == 0, f"The internal buffers are not empty"
+        for elem_id in range(0, experience_buffer.size):
+            self.buffer.append(experience_buffer.buffer[elem_id])
+            self.frame_weight.append(experience_buffer.frame_weight[elem_id])
+
     def add(self, experience):
         experience_weight = ExperienceBuffer.calc_frame_weight(experience)
         # Add weight to experience for easier debugging
