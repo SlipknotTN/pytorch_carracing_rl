@@ -116,6 +116,7 @@ def main():
     assert experience_buffer.size == args.experience_size, \
         f"Recorded experience buffer too small {experience_buffer.size} vs {args.experience_size}"
 
+    print("Saving ExperienceBuffer to file...")
     dirname = os.path.dirname(args.experience_file)
     if dirname != "":
         os.makedirs(dirname, exist_ok=True)

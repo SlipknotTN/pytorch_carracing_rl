@@ -11,7 +11,9 @@ TODO:
 - Update experience buffer in a smarter way. Not FIFO only in time. We should build a diverse experience buffer.
   By replacing the old experience we also wipe out the pre-recorded experience very fast.
   Easier maybe to just increase the experience buffer size. UPDATE: increasing the experience size improved the results.
-- Record human experience also with errors and recovers. Like exits on the grass and go on tarmac again.
+- Prepare a table in README with references to config and trained models. To be used with stable codebase, models
+  and good results.
+- Introduce longer validation which can run more rarely
 """
 import argparse
 import os
