@@ -14,7 +14,6 @@ TODO:
 - Prepare a table in README with references to config and trained models. To be used with stable codebase, models
   and good results.
 - Try skip frames.
-- Introduce longer validation which can run more rarely
 """
 import argparse
 import os
@@ -73,7 +72,6 @@ def run_validation_episode(env, config, model, available_actions, env_render=Tru
         # Update the episode reward
         total_reward += reward
 
-    print(f"End of validation episode, total_reward: {total_reward}")
     return total_reward
 
 
@@ -162,8 +160,8 @@ def main():
             state = env.reset()
 
             # Update TensorBoard
-            writer.add_scalar("Train/epsilon", epsilon, num_episode)
-            writer.add_scalar("Train/experience_size", experience_buffer.size, num_episode)
+            writer.add_scalar("Train/epsilon", epsilon, num_episode + 1)
+            writer.add_scalar("Train/experience_size", experience_buffer.size, num_episode + 1)
 
             # Prepare starting input states
             input_states = InputStates(config.input_num_frames)
@@ -264,29 +262,44 @@ def main():
             train_avg_loss = np.mean(losses)
 
             # Update TensorBoard
-            writer.add_scalar("Train/loss", train_avg_loss, num_episode)
-            writer.add_scalar("Train/reward", total_reward, num_episode)
+            writer.add_scalar("Train/loss", train_avg_loss, num_episode + 1)
+            writer.add_scalar("Train/reward", total_reward, num_episode + 1)
 
             print(f"End of episode {num_episode + 1}, total_reward: {total_reward}, avg_loss: {train_avg_loss}")
 
             # Update target model every episode
             if (num_episode + 1) % config.update_target_frequency == 0:
-                print("Updating target model")
+                print("\nUpdating target model")
                 target_model.load_state_dict(train_model.state_dict())
 
             # Validation, since it runs only one episode and the environment is randomly generated,
             # the single value is not really reliable
-            if (num_episode + 1) % config.validation_frequency == 0:
-                print(f"\nRun validation episode after {num_episode + 1} episodes")
+            if (num_episode + 1) % config.short_validation_frequency == 0:
+                print(f"\nRun single validation episode after {num_episode + 1} episodes")
                 train_model.eval()
                 val_reward = run_validation_episode(env, config, train_model, available_actions,
                                                     env_render=args.env_render, debug_state=args.debug_state)
-                writer.add_scalar("Validation/reward", val_reward, num_episode)
+                print(f"End of validation episode, total_reward: {val_reward}")
+                writer.add_scalar("Validation/reward_single", val_reward, num_episode + 1)
+                train_model.train()
+
+            # Longer validation sep
+            if (num_episode + 1) % config.long_validation_frequency == 0:
+                total_val_reward = 0.0
+                train_model.eval()
+                for i in range(0, 10):
+                    print(f"\nRun long validation after {num_episode + 1} episodes: episode {i+1}/10")
+                    val_reward = run_validation_episode(env, config, train_model, available_actions,
+                                                        env_render=args.env_render, debug_state=args.debug_state)
+                    print(f"End of validation episode, total_reward: {val_reward}")
+                    total_val_reward += val_reward
+                print(f"\nEnd of long validation after {num_episode + 1} episodes, avg_reward: {total_val_reward/10.0}")
+                writer.add_scalar("Validation/reward_avg", total_val_reward/10.0, num_episode + 1)
                 train_model.train()
 
             # Save model
             if (num_episode + 1) % config.save_model_frequency == 0:
-                print("Saving model")
+                print("\nSaving model")
                 torch.save(
                     target_model.state_dict(),
                     os.path.join(args.output_dir, f"model_{num_episode + 1}.pth")
@@ -297,7 +310,7 @@ def main():
                 experience_dump_file = f"experience_{experience_buffer.size}.pkl"
                 with open(os.path.join(args.output_dir, experience_dump_file), "wb") as out_fp:
                     pickle.dump(experience_buffer, out_fp)
-                print(f"ExperienceBuffer dump saved to \"{experience_dump_file}\"")
+                print(f"\nExperienceBuffer dump saved to \"{experience_dump_file}\"")
 
     finally:
         writer.close()

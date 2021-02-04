@@ -26,7 +26,9 @@ class ConfigParams(object):
         self.alpha = config.getfloat("TRAIN", "alpha")  # aka learning rate
         # Model checkpoint is saved every #save_model_frequency episodes
         self.save_model_frequency = config.getint("TRAIN", "save_model_frequency")
-        # Validation run is executed every #validation_frequency episodes
-        self.validation_frequency = config.getint("TRAIN", "validation_frequency")
+        # Single validation run is executed every #short_validation_frequency episodes
+        self.short_validation_frequency = config.getint("TRAIN", "short_validation_frequency")
+        # Longer validation (10 episodes) run is executed every #long_validation_frequency episodes
+        self.long_validation_frequency = config.getint("TRAIN", "long_validation_frequency")
         # Target model is updated every #update_target_frequency episodes
         self.update_target_frequency = config.getint("TRAIN", "update_target_frequency")
