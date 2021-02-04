@@ -16,6 +16,7 @@ class ConfigParams(object):
         assert self.action_complexity in ["full", "simple", "basic"]
 
         # Train
+        self.consecutive_neg_reward_stop = config.getint("TRAIN", "consecutive_negative_reward_stop", fallback=1000)
         self.experience_buffer_size = config.getint("TRAIN", "experience_buffer_size")
         self.num_episodes = config.getint("TRAIN", "num_episodes")
         self.initial_epsilon = config.getfloat("TRAIN", "initial_epsilon")

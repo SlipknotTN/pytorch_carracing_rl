@@ -13,6 +13,7 @@ TODO:
   Easier maybe to just increase the experience buffer size. UPDATE: increasing the experience size improved the results.
 - Prepare a table in README with references to config and trained models. To be used with stable codebase, models
   and good results.
+- Try skip frames.
 - Introduce longer validation which can run more rarely
 """
 import argparse
@@ -150,7 +151,6 @@ def main():
 
     try:
 
-        # First implementation without experience replay, learning while exploring
         for num_episode in range(0, config.num_episodes):
 
             total_reward = 0.0
@@ -175,9 +175,9 @@ def main():
                 next_state, reward, done, _ = env.step(no_action)
                 input_states.add_state(next_state)
 
-            # Reply the first frame config.input_num_frames times
             done = False
-            while not done:
+            consecutive_negative_rewards = 0
+            while not done and consecutive_negative_rewards < config.consecutive_neg_reward_stop:
 
                 # EXPLORATION STEP
 
@@ -199,6 +199,12 @@ def main():
                 next_state, reward, done, _ = env.step(action)
                 if args.env_render:
                     env.render()
+
+                # Update consecutive negative reward counter
+                if reward >= 0.0:
+                    consecutive_negative_rewards = 0
+                else:
+                    consecutive_negative_rewards += 1
 
                 # Update the input states
                 s = input_states.as_list()
