@@ -14,6 +14,9 @@ TODO:
 - Prepare a table in README with references to config and trained models. To be used with stable codebase, models
   and good results.
 - Try skip frames.
+- Analyze recorded experience, we need to skip more at the beginning?
+- After 500-600 episodes the agent degrades. Is the new experience useless? Do we have to store more old experience?
+  Do we have to investigate better from 400 to 500 (maybe higher save frequency?)
 """
 import argparse
 import os
