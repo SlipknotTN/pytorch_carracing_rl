@@ -2,6 +2,7 @@
 Test script to evaluate a trained mode
 """
 import argparse
+import os
 
 import cv2
 import gym
@@ -23,6 +24,7 @@ def do_parsing():
     parser.add_argument("--test_episodes", required=True, type=int, help="Number of episodes to run")
     parser.add_argument("--env_render", action="store_true", help="Render environment in GUI")
     parser.add_argument("--debug_state", action="store_true", help="Show last state frame in GUI")
+    parser.add_argument("--frames_output_dir", required=False, type=str, help="Path to save frames")
     args = parser.parse_args()
     return args
 
@@ -51,7 +53,14 @@ def main():
 
     sum_of_episodes_rewards = 0
 
+    if args.frames_output_dir:
+        os.makedirs(args.frames_output_dir)
+
     for num_episode in range(0, args.test_episodes):
+
+        if args.frames_output_dir:
+            episode_output_dir = os.path.join(args.frames_output_dir, f"episode_{num_episode + 1}")
+            os.makedirs(episode_output_dir)
 
         total_reward = 0.0
         print(f"Start episode {num_episode + 1}")
@@ -69,10 +78,15 @@ def main():
 
         # Reply the first frame config.input_num_frames times
         done = False
+        frame_num = 0
         while not done:
             done, next_state, reward = take_most_probable_action(env, input_states, model, available_actions)
             if args.env_render:
                 env.render()
+
+            if args.frames_output_dir:
+                cv2.imwrite(os.path.join(episode_output_dir, f"frame_{frame_num + 1}.jpg"),
+                            cv2.cvtColor(next_state, cv2.COLOR_RGB2BGR))
 
             # Update the input states
             input_states.add_state(next_state)
@@ -83,6 +97,8 @@ def main():
 
             # Update the episode reward
             total_reward += reward
+
+            frame_num += 1
 
         # End of episode, epsilon decay
         sum_of_episodes_rewards += total_reward
