@@ -1,12 +1,13 @@
 # README
 
-This is an implementation of Q-Learning to solve this Open AI
+This repository includes an implementation of Q-Learning 
+and policy gradient to solve this Open AI
 gym environment https://gym.openai.com/envs/CarRacing-v0/ using PyTorch.
 
 More details in the source file:
 https://github.com/openai/gym/blob/master/gym/envs/box2d/car_racing.py
 
-### Requirements
+## Requirements
 
 Tested with:
 - Ubuntu 18.04
@@ -18,15 +19,25 @@ Tested with:
 pip install -r requirements.txt
 ```
 
-### How to play the game
+## How to play the game
 
 ```
 ./play.sh
 ```
 
-## Models
+## Q-Learning
 
-Models, configurations and outputs on [Google Drive](https://drive.google.com/drive/folders/1zAPVtHHQdLWlo41upGfnlQPIbosR-Q6Y?usp=sharing).
+### How to train
+
+TODO
+
+### How to test
+
+TODO
+
+### Pretrained models
+
+Models, configurations and outputs on [Google Drive](https://drive.google.com/drive/folders/1k1oSsBdXz8EbTjUHddEjPqlWzDnSHPxk?usp=sharing).
 
 ### Configuration changes
 
@@ -43,3 +54,7 @@ Models, configurations and outputs on [Google Drive](https://drive.google.com/dr
 | model_basic_openai_stop_expl | 550 | N/A | N/A | More on gas, but completely wrong with only 50 more training episodes.|
 
 (*) Test runs should be around 100 to be reliable.
+
+## Policy gradient
+
+TODO
