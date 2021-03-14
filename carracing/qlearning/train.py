@@ -4,7 +4,7 @@ Generic reference: https://pytorch.org/tutorials/intermediate/reinforcement_q_le
 
 Other ideas: https://gsurma.medium.com/atari-reinforcement-learning-in-depth-part-1-ddqn-ceaa762a546f
 
-TODO:
+TODO/Insights/Ideas:
 - Solve system out of memory -> Temporary fix https://github.com/openai/gym/pull/2096
 - We want to learn to turn, probably we should "cluster" the states and avoid duplicates/similarity.
   Or possible augmentations like train with mirrored images, but we have to mirror left/right action

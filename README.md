@@ -27,6 +27,10 @@ pip install -r requirements.txt
 
 ## Q-Learning
 
+TODO:
+- Describe action spaces
+- Add more insights (e.g. increasing the experience buffer works)
+
 ### How to train
 
 TODO
